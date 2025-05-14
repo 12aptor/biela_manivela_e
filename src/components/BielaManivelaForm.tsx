@@ -4,18 +4,18 @@ import "./BielaManivelaForm.css";
 
 const BielaManivelaForm: React.FC = () => {
   const [formData, setFormData] = useState({
-    Lm: 100,
-    Lb: 200,
-    e: 20,
-    theta_m_deg: 45,
-    theta_b_deg: 0,
-    s: 0,
-    vel_m: 0,
-    vel_b: 0,
-    vel_s: 0,
-    acc_m: 0,
-    acc_b: 0,
-    acc_s: 0,
+    Lm: "",
+    Lb: "",
+    e: "",
+    theta_m_deg: "",
+    theta_b_deg: "",
+    s: "",
+    vel_m: "",
+    vel_b: "",
+    vel_s: "",
+    acc_m: "",
+    acc_b: "",
+    acc_s: "",
   });
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -42,13 +42,28 @@ const BielaManivelaForm: React.FC = () => {
       acc_s: formData.acc_s,
     });
 
-    const result = bielaManivela.equationOfMotion();
-    if (result) {
+    const paramsIsValid = bielaManivela.validateParams();
+
+    if (!paramsIsValid) {
+      return;
+    }
+
+    const position = bielaManivela.equationOfMotion();
+    if (position) {
       setFormData({
         ...formData,
-        theta_m_deg: parseFloat(result.theta_m_deg.toFixed(2)),
-        theta_b_deg: parseFloat(result.theta_b_deg.toFixed(2)),
-        s: parseFloat(result.s.toFixed(2)),
+        theta_m_deg: parseFloat(position.theta_m_deg.toFixed(2)),
+        theta_b_deg: parseFloat(position.theta_b_deg.toFixed(2)),
+        s: parseFloat(position.s.toFixed(2)),
+      });
+    }
+    const velocity = bielaManivela.calculateVelocity();
+    if (velocity) {
+      setFormData({
+        ...formData,
+        vel_m: parseFloat(velocity.theta_m_dot.toFixed(2)),
+        vel_b: parseFloat(velocity.theta_b_dot.toFixed(2)),
+        vel_s: parseFloat(velocity.s_dot.toFixed(2)),
       });
     }
   };
