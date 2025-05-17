@@ -1,32 +1,25 @@
-import React, { ChangeEvent, useState } from "react";
-import { BielaManivela } from "../lib/biela_manivela_e";
+import React, { ChangeEvent } from "react";
+import { BielaManivela, BielaManivelaParams } from "../lib/biela_manivela_e";
 import "./BielaManivelaForm.css";
 import { toast } from "sonner";
 
-const BielaManivelaForm: React.FC = () => {
-  const [formData, setFormData] = useState({
-    Lm: "",
-    Lb: "",
-    e: "",
-    theta_m_deg: "",
-    theta_b_deg: "",
-    s: "",
-    vel_m: "",
-    vel_b: "",
-    vel_s: "",
-    acc_m: "",
-    acc_b: "",
-    acc_s: "",
-  });
+interface BielaManivelaFormProps {
+  setFormData: (formData: BielaManivelaParams) => void;
+  formData: BielaManivelaParams;
+}
 
+const BielaManivelaForm: React.FC<BielaManivelaFormProps> = ({
+  setFormData,
+  formData,
+}) => {
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
     if (value === "" || value === "+" || value === "-") {
-      setFormData((prev) => ({
-        ...prev,
+      setFormData({
+        ...formData,
         [name]: value,
-      }));
+      });
       return;
     }
 
@@ -36,10 +29,10 @@ const BielaManivelaForm: React.FC = () => {
       return toast.error("El valor ingresado no es un número válido.");
     }
 
-    setFormData((prev) => ({
-      ...prev,
+    setFormData({
+      ...formData,
       [name]: parseFloat(value),
-    }));
+    });
   };
 
   const calculateMechanism = () => {
@@ -82,6 +75,13 @@ const BielaManivelaForm: React.FC = () => {
         vel_s: velocity.s_dot.toFixed(2),
       });
     }
+
+    setFormData({
+      ...formData,
+      theta_m_deg: position?.theta_m_deg.toFixed(2) || formData.theta_m_deg,
+      theta_b_deg: position?.theta_b_deg.toFixed(2) || formData.theta_b_deg,
+      s: position?.s.toFixed(2) || formData.s,
+    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {

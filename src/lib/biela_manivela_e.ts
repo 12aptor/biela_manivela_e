@@ -3,7 +3,7 @@ import { toast } from "sonner";
 
 const math = create(all);
 
-interface BielaManivelaParams {
+export interface BielaManivelaParams {
   Lm: string;
   Lb: string;
   e: string;
