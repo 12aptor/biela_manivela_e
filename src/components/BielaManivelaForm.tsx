@@ -1,6 +1,7 @@
 import React, { ChangeEvent, useState } from "react";
 import { BielaManivela } from "../lib/biela_manivela_e";
 import "./BielaManivelaForm.css";
+import { toast } from "sonner";
 
 const BielaManivelaForm: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,21 @@ const BielaManivelaForm: React.FC = () => {
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
+    if (value === "" || value === "+" || value === "-") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      return;
+    }
+
+    const numberRegex = /^[-+]?(\d+\.?\d*|\.\d+)$/;
+
+    if (!numberRegex.test(value)) {
+      return toast.error("El valor ingresado no es un número válido.");
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: parseFloat(value),
@@ -27,7 +43,9 @@ const BielaManivelaForm: React.FC = () => {
   };
 
   const calculateMechanism = () => {
-    const bielaManivela = new BielaManivela({
+    const bielaManivela = new BielaManivela();
+
+    const paramsIsValid = bielaManivela.validateParams({
       Lm: formData.Lm,
       Lb: formData.Lb,
       e: formData.e,
@@ -42,8 +60,6 @@ const BielaManivelaForm: React.FC = () => {
       acc_s: formData.acc_s,
     });
 
-    const paramsIsValid = bielaManivela.validateParams();
-
     if (!paramsIsValid) {
       return;
     }
@@ -52,18 +68,18 @@ const BielaManivelaForm: React.FC = () => {
     if (position) {
       setFormData({
         ...formData,
-        theta_m_deg: parseFloat(position.theta_m_deg.toFixed(2)),
-        theta_b_deg: parseFloat(position.theta_b_deg.toFixed(2)),
-        s: parseFloat(position.s.toFixed(2)),
+        theta_m_deg: position.theta_m_deg.toFixed(2),
+        theta_b_deg: position.theta_b_deg.toFixed(2),
+        s: position.s.toFixed(2),
       });
     }
     const velocity = bielaManivela.calculateVelocity();
     if (velocity) {
       setFormData({
         ...formData,
-        vel_m: parseFloat(velocity.theta_m_dot.toFixed(2)),
-        vel_b: parseFloat(velocity.theta_b_dot.toFixed(2)),
-        vel_s: parseFloat(velocity.s_dot.toFixed(2)),
+        vel_m: velocity.theta_m_dot.toFixed(2),
+        vel_b: velocity.theta_b_dot.toFixed(2),
+        vel_s: velocity.s_dot.toFixed(2),
       });
     }
   };
@@ -82,7 +98,7 @@ const BielaManivelaForm: React.FC = () => {
           <div className="input-group">
             <label htmlFor="Lm">Longitud de Manivela (Lm)</label>
             <input
-              type="number"
+              type="text"
               id="Lm"
               name="Lm"
               value={formData.Lm}
@@ -93,7 +109,7 @@ const BielaManivelaForm: React.FC = () => {
           <div className="input-group">
             <label htmlFor="Lb">Longitud de Biela (Lb)</label>
             <input
-              type="number"
+              type="text"
               id="Lb"
               name="Lb"
               value={formData.Lb}
@@ -104,7 +120,7 @@ const BielaManivelaForm: React.FC = () => {
           <div className="input-group">
             <label htmlFor="e">Excentricidad (e)</label>
             <input
-              type="number"
+              type="text"
               id="e"
               name="e"
               value={formData.e}
@@ -118,9 +134,9 @@ const BielaManivelaForm: React.FC = () => {
       <div className="section-header">Posiciones</div>
       <div className="row">
         <div className="input-group">
-          <label htmlFor="theta_m_deg">Theta Manivela</label>
+          <label htmlFor="theta_m_deg">Ángulo de Manivela</label>
           <input
-            type="number"
+            type="text"
             id="theta_m_deg"
             name="theta_m_deg"
             value={formData.theta_m_deg}
@@ -129,9 +145,9 @@ const BielaManivelaForm: React.FC = () => {
           />
         </div>
         <div className="input-group">
-          <label htmlFor="theta_b_deg">Theta Biela</label>
+          <label htmlFor="theta_b_deg">Ángulo de Biela</label>
           <input
-            type="number"
+            type="text"
             id="theta_b_deg"
             name="theta_b_deg"
             value={formData.theta_b_deg}
@@ -140,9 +156,9 @@ const BielaManivelaForm: React.FC = () => {
           />
         </div>
         <div className="input-group">
-          <label htmlFor="s">Posición Corredera (s)</label>
+          <label htmlFor="s">Posición de Corredera (s)</label>
           <input
-            type="number"
+            type="text"
             id="s"
             name="s"
             value={formData.s}
@@ -157,7 +173,7 @@ const BielaManivelaForm: React.FC = () => {
         <div className="input-group">
           <label htmlFor="vel_m">Velocidad Manivela</label>
           <input
-            type="number"
+            type="text"
             id="vel_m"
             name="vel_m"
             value={formData.vel_m}
@@ -168,7 +184,7 @@ const BielaManivelaForm: React.FC = () => {
         <div className="input-group">
           <label htmlFor="vel_b">Velocidad Biela</label>
           <input
-            type="number"
+            type="text"
             id="vel_b"
             name="vel_b"
             value={formData.vel_b}
@@ -179,7 +195,7 @@ const BielaManivelaForm: React.FC = () => {
         <div className="input-group">
           <label htmlFor="vel_s">Velocidad Corredera</label>
           <input
-            type="number"
+            type="text"
             id="vel_s"
             name="vel_s"
             value={formData.vel_s}
@@ -194,7 +210,7 @@ const BielaManivelaForm: React.FC = () => {
         <div className="input-group">
           <label htmlFor="acc_m">Aceleración Manivela</label>
           <input
-            type="number"
+            type="text"
             id="acc_m"
             name="acc_m"
             value={formData.acc_m}
@@ -205,7 +221,7 @@ const BielaManivelaForm: React.FC = () => {
         <div className="input-group">
           <label htmlFor="acc_b">Aceleración Biela</label>
           <input
-            type="number"
+            type="text"
             id="acc_b"
             name="acc_b"
             value={formData.acc_b}
@@ -216,7 +232,7 @@ const BielaManivelaForm: React.FC = () => {
         <div className="input-group">
           <label htmlFor="acc_s">Aceleración Corredera</label>
           <input
-            type="number"
+            type="text"
             id="acc_s"
             name="acc_s"
             value={formData.acc_s}

@@ -19,72 +19,89 @@ interface BielaManivelaParams {
 }
 
 export class BielaManivela {
-  public Lm: number;
-  public Lb: number;
-  public e: number;
-  public theta_m_rad: number;
-  public theta_b_rad: number;
-  public s: number;
-  public vel_m: number;
-  public vel_b: number;
-  public vel_s: number;
-  public acc_m: number;
-  public acc_b: number;
-  public acc_s: number;
+  public Lm: number = 0;
+  public Lb: number = 0;
+  public e: number = 0;
+  public theta_m_rad: number = 0;
+  public theta_b_rad: number = 0;
+  public s: number = 0;
+  public vel_m: number = 0;
+  public vel_b: number = 0;
+  public vel_s: number = 0;
+  public acc_m: number = 0;
+  public acc_b: number = 0;
+  public acc_s: number = 0;
 
   constructor() {}
 
-  convertToRadians(value: string) {
+  degToRadians(value: string) {
     return (parseFloat(value) * math.pi) / 180;
   }
 
-  convertToNumber(value: string) {
+  radiansToDegrees(value: number) {
+    return (value * 180) / math.pi;
+  }
+
+  stringToNumber(value: string) {
     return parseFloat(value);
   }
 
   setParams(params: BielaManivelaParams) {
-    this.Lm = this.convertToNumber(params.Lm);
-    this.Lb = this.convertToNumber(params.Lb);
-    this.e = this.convertToNumber(params.e);
-    this.theta_m_rad = this.convertToRadians(params.theta_m_deg);
-    this.theta_b_rad = this.convertToRadians(params.theta_b_deg);
-    this.s = this.convertToNumber(params.s);
-    this.vel_m = this.convertToNumber(params.vel_m);
-    this.vel_b = this.convertToNumber(params.vel_b);
-    this.vel_s = this.convertToNumber(params.vel_s);
-    this.acc_m = this.convertToNumber(params.acc_m);
-    this.acc_b = this.convertToNumber(params.acc_b);
-    this.acc_s = this.convertToNumber(params.acc_s);
+    this.Lm = this.stringToNumber(params.Lm);
+    this.Lb = this.stringToNumber(params.Lb);
+    this.e = this.stringToNumber(params.e);
+    this.theta_m_rad = this.degToRadians(params.theta_m_deg);
+    this.theta_b_rad = this.degToRadians(params.theta_b_deg);
+    this.s = this.stringToNumber(params.s);
+    this.vel_m = this.stringToNumber(params.vel_m);
+    this.vel_b = this.stringToNumber(params.vel_b);
+    this.vel_s = this.stringToNumber(params.vel_s);
+    this.acc_m = this.stringToNumber(params.acc_m);
+    this.acc_b = this.stringToNumber(params.acc_b);
+    this.acc_s = this.stringToNumber(params.acc_s);
+  }
+
+  isNumber(value: string) {
+    return !isNaN(parseFloat(value));
+  }
+
+  validateParam(value: string, name: string) {
+    if (value === "") {
+      throw new Error(name + " no puede estar vacío");
+    }
+    if (!this.isNumber(value)) {
+      throw new Error(name + " debe ser un número");
+    }
+    if (parseFloat(value) <= 0) {
+      throw new Error(name + " debe ser mayor que cero");
+    }
+    return parseFloat(value);
   }
 
   validateParams(params: BielaManivelaParams) {
+    console.log(params);
     try {
-      if (params.Lm === undefined) {
+      this.Lm = this.validateParam(params.Lm, "Longitud de manivela (Lm)");
+      this.Lb = this.validateParam(params.Lb, "Longitud de biela (Lb)");
+      this.e = this.validateParam(params.e, "Excentricidad (e)");
+
+      const inputParams = [
+        params.theta_m_deg !== "",
+        params.theta_b_deg !== "",
+        params.s !== "",
+      ].filter(Boolean).length;
+      
+      if (inputParams === 0) {
         throw new Error(
-          "La longitud de la manivela (Lm) debe ser mayor que cero"
+          "Se debe proporcionar al menos uno de los siguientes: ángulo de manivela, ángulo de biela o posición"
         );
       }
-      this.Lm = parseFloat(params.Lm);
-
-      if (params.Lb === undefined) {
-        throw new Error("La longitud de la biela (Lb) debe ser mayor que cero");
-      }
-      this.Lb = parseFloat(params.Lb);
-
-      // Validar que solo se proporcione uno de los ángulos o la posición
-      const inputParams = [
-        this.params.theta_m_deg !== undefined,
-        this.params.theta_b_deg !== undefined,
-        this.params.s !== undefined,
-      ].filter(Boolean).length;
-
       if (inputParams > 1) {
         throw new Error(
           "Solo se debe proporcionar uno de los siguientes: ángulo de manivela, ángulo de biela o posición"
         );
       }
 
-      // Validar rangos angulares si se proporcionan
       if (
         this.theta_m_rad !== undefined &&
         (this.theta_m_rad < -360 || this.theta_m_rad > 360)
@@ -126,65 +143,59 @@ export class BielaManivela {
   }
 
   equationOfMotion() {
-    if (this.params.theta_m_deg) {
+    console.log(this.theta_m_rad);
+    if (this.theta_m_rad === 0) {
       const dividend = math.add(
-        math.multiply(this.params.Lm, math.sin(this.theta_m_rad)),
-        this.params.e
+        math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+        this.e
       );
-      const divisor = this.params.Lb;
+      const divisor = this.Lb;
       const asin_argument = dividend / divisor;
 
       this.theta_b_rad = math.asin(asin_argument) as number;
       this.calculatePosition();
 
       return {
-        theta_m_deg: this.params.theta_m_deg,
-        theta_b_deg: (this.theta_b_rad * 180) / math.pi,
+        theta_m_deg: this.radiansToDegrees(this.theta_m_rad),
+        theta_b_deg: this.radiansToDegrees(this.theta_b_rad),
         s: this.s,
       };
     }
 
-    if (this.params.theta_b_deg) {
+    if (this.theta_b_rad) {
       const dividend = math.subtract(
-        math.multiply(this.params.Lb, math.sin(this.theta_b_rad)),
-        this.params.e
+        math.multiply(this.Lb, math.sin(this.theta_b_rad)),
+        this.e
       );
-      const divisor = this.params.Lm;
+      const divisor = this.Lm;
 
       this.theta_m_rad = math.asin(dividend / divisor) as number;
       this.calculatePosition();
 
       return {
-        theta_m_deg: (this.theta_m_rad * 180) / math.pi,
-        theta_b_deg: this.params.theta_b_deg,
+        theta_m_deg: this.radiansToDegrees(this.theta_m_rad),
+        theta_b_deg: this.radiansToDegrees(this.theta_b_rad),
         s: this.s,
       };
     }
 
-    if (this.params.s) {
+    if (this.s) {
       const acos_dividend = math.add(
-        math.add(math.pow(this.params.s, 2), math.pow(this.params.e, 2)),
-        math.subtract(math.pow(this.params.Lb, 2), math.pow(this.params.Lm, 2))
+        math.add(math.pow(this.s, 2), math.pow(this.e, 2)),
+        math.subtract(math.pow(this.Lb, 2), math.pow(this.Lm, 2))
       );
-      const acos_divisor = math.multiply(2, this.params.Lb);
+      const acos_divisor = math.multiply(2, this.Lb);
       const acos_argument = math.divide(acos_dividend, acos_divisor) as number;
       this.theta_b_rad = math.add(
-        math.atan(math.divide(this.params.e, this.params.s)),
+        math.atan(math.divide(this.e, this.s)),
         math.acos(acos_argument)
       ) as number;
 
-      console.log({
-        acos_dividend: acos_dividend,
-        acos_divisor: acos_divisor,
-        acos_argument: acos_argument,
-        theta_b_rad: this.theta_b_rad,
-      });
-
       const asin_dividend = math.subtract(
-        math.multiply(this.params.Lb, math.sin(this.theta_b_rad)),
-        this.params.e
+        math.multiply(this.Lb, math.sin(this.theta_b_rad)),
+        this.e
       );
-      const asin_divisor = this.params.Lm;
+      const asin_divisor = this.Lm;
 
       this.theta_m_rad = math.asin(asin_dividend / asin_divisor) as number;
 
@@ -203,16 +214,16 @@ export class BielaManivela {
   }
 
   calculateVelocity() {
-    if (this.params.vel_m) {
+    if (this.vel_m) {
       const A = [
         [
-          this.params.Lm * math.sin(this.theta_m_rad),
-          this.params.Lb * math.sin(this.theta_b_rad),
+          this.Lm * math.sin(this.theta_m_rad),
+          this.Lb * math.sin(this.theta_b_rad),
           1,
         ],
         [
-          this.params.Lm * math.cos(this.theta_m_rad),
-          -this.params.Lb * math.cos(this.theta_b_rad),
+          this.Lm * math.cos(this.theta_m_rad),
+          -this.Lb * math.cos(this.theta_b_rad),
           0,
         ],
         [1, 0, 0],
@@ -231,7 +242,7 @@ export class BielaManivela {
         theta_b_dot,
         s_dot,
       };
-    } else if (this.params.vel_b) {
+    } else if (this.vel_b) {
       return {
         theta_m_dot: this.vel_m,
         theta_b_dot: this.vel_b,
