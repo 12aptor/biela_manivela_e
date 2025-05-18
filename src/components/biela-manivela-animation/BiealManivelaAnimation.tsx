@@ -6,6 +6,11 @@ interface BielaManivelaAnimationProps {
   formData: BielaManivelaParams;
 }
 
+const parseSafe = (value: string, defaultValue: number = 0): number => {
+  const num = parseFloat(value);
+  return isNaN(num) ? defaultValue : num;
+};
+
 const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
   formData,
 }) => {
@@ -13,12 +18,9 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
   const animationRef = useRef<number | null>(null);
   const timeRef = useRef<number>(0);
   const prevFormDataRef = useRef<BielaManivelaParams>(formData);
+  const currentVelocityRef = useRef<number>(parseSafe(formData.vel_m, 1));
+  const lastTimestampRef = useRef<number>(0);
 
-  // Función para parsear valores numéricos seguros
-  const parseSafe = (value: string, defaultValue: number = 0): number => {
-    const num = parseFloat(value);
-    return isNaN(num) ? defaultValue : num;
-  };
 
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number, scale: number) => {
     const centerY = height / 2;
@@ -28,7 +30,6 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
     ctx.strokeStyle = "#e0e0e0";
     ctx.lineWidth = 0.5;
     
-    // Líneas verticales
     for (let x = 0; x < width; x += gridPixelSize) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -42,7 +43,6 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
       }
     }
     
-    // Líneas horizontales
     for (let y = centerY - 5 * gridPixelSize; y < centerY + 5 * gridPixelSize; y += gridPixelSize) {
       if (y < 0 || y > height) continue;
       
@@ -59,7 +59,6 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
       }
     }
     
-    // Eje central
     ctx.strokeStyle = "#999";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -111,7 +110,8 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
     const Lm = parseSafe(formData.Lm, 1);
     const Lb = parseSafe(formData.Lb, 2);
     const e = parseSafe(formData.e, 0.5);
-    const vel_m = parseSafe(formData.vel_m, 60); // Velocidad angular en RPM
+    const vel_m_rad = currentVelocityRef.current;
+    const acc_m_rad = parseSafe(formData.acc_m, 0);
     
     const maxDimension = Lm + Lb + Math.abs(e);
     const scale = Math.min(
@@ -124,33 +124,43 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
 
     const theta_m = (theta_m_deg * Math.PI) / 180;
     
-    // Cálculos cinemáticos
     const sin_theta_b = (Lm * Math.sin(theta_m) - e) / Lb;
     const theta_b = Math.asin(sin_theta_b);
     const theta_b_deg = (theta_b * 180) / Math.PI;
     const s = Lm * Math.cos(theta_m) + Lb * Math.cos(theta_b);
 
-    // Velocidades y aceleraciones (usando valores del formData o calculados)
+    // Calcular velocidades y aceleraciones basadas en la posición actual
+    const omega_m = vel_m_rad;
+    const alpha_m = acc_m_rad;
+    
+    const omega_b = -Lm * omega_m * Math.cos(theta_m) / (Lb * Math.cos(theta_b));
+    const vel_s = -Lm * omega_m * Math.sin(theta_m) - Lb * omega_b * Math.sin(theta_b);
+    
+    const term1 = Lm * (alpha_m * Math.cos(theta_m) - omega_m * omega_m * Math.sin(theta_m));
+    const term2 = Lb * omega_b * omega_b * Math.cos(theta_b);
+    const alpha_b = -(term1 + term2) / (Lb * Math.cos(theta_b));
+    
+    const acc_s = -Lm * (alpha_m * Math.sin(theta_m) + omega_m * omega_m * Math.cos(theta_m)) 
+                  - Lb * (alpha_b * Math.sin(theta_b) + omega_b * omega_b * Math.cos(theta_b));
+
     const theta_m_form = parseSafe(formData.theta_m_deg);
     const useFormValues = !showCalculatedValues && theta_m_form !== 0;
     
     const display_theta_m = useFormValues ? theta_m_form : theta_m_deg;
     const display_theta_b = useFormValues ? parseSafe(formData.theta_b_deg) : theta_b_deg;
     const display_s = useFormValues ? parseSafe(formData.s) : s;
-    const display_vel_m = parseSafe(formData.vel_m);
-    const display_vel_b = parseSafe(formData.vel_b);
-    const display_vel_s = parseSafe(formData.vel_s);
-    const display_acc_m = parseSafe(formData.acc_m);
-    const display_acc_b = parseSafe(formData.acc_b);
-    const display_acc_s = parseSafe(formData.acc_s);
+    const display_vel_m = useFormValues ? parseSafe(formData.vel_m) : omega_m;
+    const display_vel_b = useFormValues ? parseSafe(formData.vel_b) : omega_b;
+    const display_vel_s = useFormValues ? parseSafe(formData.vel_s) : vel_s;
+    const display_acc_m = useFormValues ? parseSafe(formData.acc_m) : alpha_m;
+    const display_acc_b = useFormValues ? parseSafe(formData.acc_b) : alpha_b;
+    const display_acc_s = useFormValues ? parseSafe(formData.acc_s) : acc_s;
 
-    // Coordenadas de los componentes
     const crankX = pivotX + Lm * Math.cos(theta_m) * scale;
     const crankY = centerY - Lm * Math.sin(theta_m) * scale;
     const sliderX = pivotX + s * scale;
     const sliderY = centerY - e * scale;
 
-    // Dibujar manivela
     ctx.beginPath();
     ctx.moveTo(pivotX, centerY);
     ctx.lineTo(crankX, crankY);
@@ -158,7 +168,6 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Dibujar biela
     ctx.beginPath();
     ctx.moveTo(crankX, crankY);
     ctx.lineTo(sliderX, sliderY);
@@ -166,11 +175,9 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Dibujar corredera
     ctx.fillStyle = "#4caf50";
     ctx.fillRect(sliderX - 15, sliderY - 10, 30, 20);
 
-    // Dibujar excentricidad
     if (e !== 0) {
       ctx.strokeStyle = "#9c27b0";
       ctx.setLineDash([5, 3]);
@@ -185,7 +192,6 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
       ctx.fillText(`e = ${e.toFixed(2)}`, pivotX + 5, (centerY + sliderY) / 2);
     }
 
-    // Puntos de unión
     ctx.fillStyle = "#333";
     ctx.beginPath();
     ctx.arc(pivotX, centerY, 5, 0, Math.PI * 2);
@@ -194,24 +200,19 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
     ctx.arc(crankX, crankY, 5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Información del mecanismo
     ctx.fillStyle = "#000";
     ctx.font = "14px Arial";
     let yPos = 20;
-    ctx.fillText(`Manivela (Lm): ${Lm.toFixed(2)}`, 10, yPos); yPos += 20;
-    ctx.fillText(`Biela (Lb): ${Lb.toFixed(2)}`, 10, yPos); yPos += 20;
-    ctx.fillText(`Excentricidad (e): ${e.toFixed(2)}`, 10, yPos); yPos += 20;
     ctx.fillText(`Ángulo Manivela: ${display_theta_m.toFixed(1)}°`, 10, yPos); yPos += 20;
     ctx.fillText(`Ángulo Biela: ${display_theta_b.toFixed(1)}°`, 10, yPos); yPos += 20;
     ctx.fillText(`Posición Corredera (s): ${display_s.toFixed(2)}`, 10, yPos); yPos += 20;
-    ctx.fillText(`Velocidad Manivela: ${display_vel_m.toFixed(1)} rpm`, 10, yPos); yPos += 20;
-    ctx.fillText(`Velocidad Biela: ${display_vel_b.toFixed(1)} rad/s`, 10, yPos); yPos += 20;
-    ctx.fillText(`Velocidad Corredera: ${display_vel_s.toFixed(1)} m/s`, 10, yPos); yPos += 20;
-    ctx.fillText(`Acel. Manivela: ${display_acc_m.toFixed(1)} rad/s²`, 10, yPos); yPos += 20;
-    ctx.fillText(`Acel. Biela: ${display_acc_b.toFixed(1)} rad/s²`, 10, yPos); yPos += 20;
-    ctx.fillText(`Acel. Corredera: ${display_acc_s.toFixed(1)} m/s²`, 10, yPos);
+    ctx.fillText(`Velocidad Manivela: ${display_vel_m.toFixed(2)} rad/s`, 10, yPos); yPos += 20;
+    ctx.fillText(`Velocidad Biela: ${display_vel_b.toFixed(2)} rad/s`, 10, yPos); yPos += 20;
+    ctx.fillText(`Velocidad Corredera: ${display_vel_s.toFixed(2)} m/s`, 10, yPos); yPos += 20;
+    ctx.fillText(`Acel. Manivela: ${display_acc_m.toFixed(2)} rad/s²`, 10, yPos); yPos += 20;
+    ctx.fillText(`Acel. Biela: ${display_acc_b.toFixed(2)} rad/s²`, 10, yPos); yPos += 20;
+    ctx.fillText(`Acel. Corredera: ${display_acc_s.toFixed(2)} m/s²`, 10, yPos);
     
-    // Dimensiones
     ctx.strokeStyle = "#666";
     ctx.setLineDash([2, 2]);
     drawDimension(ctx, pivotX, centerY, crankX, crankY, `Lm=${Lm.toFixed(1)}`);
@@ -226,46 +227,70 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Reiniciar animación si cambian los parámetros importantes
-    const importantParams = { Lm: formData.Lm, Lb: formData.Lb, e: formData.e, vel_m: formData.vel_m };
-    const prevImportantParams = { Lm: prevFormDataRef.current.Lm, Lb: prevFormDataRef.current.Lb, e: prevFormDataRef.current.e, vel_m: prevFormDataRef.current.vel_m };
+    const importantParams = { 
+      Lm: formData.Lm, 
+      Lb: formData.Lb, 
+      e: formData.e, 
+      vel_m: formData.vel_m,
+      acc_m: formData.acc_m
+    };
+    const prevImportantParams = { 
+      Lm: prevFormDataRef.current.Lm, 
+      Lb: prevFormDataRef.current.Lb, 
+      e: prevFormDataRef.current.e, 
+      vel_m: prevFormDataRef.current.vel_m,
+      acc_m: prevFormDataRef.current.acc_m
+    };
     
     if (JSON.stringify(importantParams) !== JSON.stringify(prevImportantParams)) {
       prevFormDataRef.current = formData;
+      currentVelocityRef.current = parseSafe(formData.vel_m, 1);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
       timeRef.current = 0;
+      lastTimestampRef.current = 0;
     }
 
-    // Ajustar tamaño del canvas
     const resizeCanvas = () => {
       const container = canvas.parentElement;
       if (container) {
         canvas.width = container.clientWidth;
-        canvas.height = 650; // Altura suficiente para toda la información
+        canvas.height = 650;
       }
     };
 
     resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
 
-    // Función de animación
-    const animate = (time: number) => {
-      if (!ctx) return;
+    const animate = (timestamp: number) => {
+      if (!ctx || !canvas) return;
       
-      if (timeRef.current === 0) timeRef.current = time;
-      const elapsed = time - timeRef.current;
-      const vel_m = parseSafe(formData.vel_m, 60);
-      // Convertir RPM a grados por milisegundo
-      const theta_m_deg = (elapsed * vel_m * 360 / 60000) % 360;
+      if (timeRef.current === 0) {
+        timeRef.current = timestamp;
+        lastTimestampRef.current = timestamp;
+      }
+      
+      const deltaTime = (timestamp - lastTimestampRef.current) / 1000; // en segundos
+      lastTimestampRef.current = timestamp;
+      
+      // Actualizar velocidad angular basada en la aceleración
+      const acc_m_rad = parseSafe(formData.acc_m, 0);
+      currentVelocityRef.current += acc_m_rad * deltaTime;
+      
+      // No permitir velocidad negativa si la aceleración es cero
+      if (acc_m_rad === 0 && currentVelocityRef.current < 0) {
+        currentVelocityRef.current = 0;
+      }
+      
+      const elapsed = timestamp - timeRef.current;
+      const theta_m_deg = (currentVelocityRef.current * elapsed * 180 / Math.PI) % 360;
       
       drawMechanism(ctx, canvas.width, canvas.height, theta_m_deg, true);
       animationRef.current = requestAnimationFrame(animate);
     };
 
-    // Iniciar animación o mostrar posición estática
-    if (parseSafe(formData.vel_m, 0) !== 0) {
+    if (parseSafe(formData.vel_m, 0) !== 0 || parseSafe(formData.acc_m, 0) !== 0) {
       animationRef.current = requestAnimationFrame(animate);
     } else {
       const theta_m_deg = parseSafe(formData.theta_m_deg);
@@ -289,21 +314,35 @@ const BielaManivelaAnimation: React.FC<BielaManivelaAnimationProps> = ({
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
       
-      // Al pausar, mostrar los valores del formulario
       const theta_m_deg = parseSafe(formData.theta_m_deg);
       drawMechanism(ctx, canvasRef.current.width, canvasRef.current.height, theta_m_deg, false);
     } else {
-      // Al reanudar, iniciar animación
       timeRef.current = 0;
-      const animate = (time: number) => {
-        if (!ctx) return;
+      lastTimestampRef.current = 0;
+      currentVelocityRef.current = parseSafe(formData.vel_m, 1);
+      
+      const animate = (timestamp: number) => {
+        if (!ctx || !canvasRef.current) return;
         
-        if (timeRef.current === 0) timeRef.current = time;
-        const elapsed = time - timeRef.current;
-        const vel_m = parseSafe(formData.vel_m, 60);
-        const theta_m_deg = (elapsed * vel_m * 360 / 60000) % 360;
+        if (timeRef.current === 0) {
+          timeRef.current = timestamp;
+          lastTimestampRef.current = timestamp;
+        }
         
-        drawMechanism(ctx, canvasRef.current?.width || 800, canvasRef.current?.height || 650, theta_m_deg, true);
+        const deltaTime = (timestamp - lastTimestampRef.current) / 1000;
+        lastTimestampRef.current = timestamp;
+        
+        const acc_m_rad = parseSafe(formData.acc_m, 0);
+        currentVelocityRef.current += acc_m_rad * deltaTime;
+        
+        if (acc_m_rad === 0 && currentVelocityRef.current < 0) {
+          currentVelocityRef.current = 0;
+        }
+        
+        const elapsed = timestamp - timeRef.current;
+        const theta_m_deg = (currentVelocityRef.current * elapsed * 180 / Math.PI) % 360;
+        
+        drawMechanism(ctx, canvasRef.current.width, canvasRef.current.height, theta_m_deg, true);
         animationRef.current = requestAnimationFrame(animate);
       };
       

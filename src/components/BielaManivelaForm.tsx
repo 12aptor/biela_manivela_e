@@ -15,23 +15,15 @@ const BielaManivelaForm: React.FC<BielaManivelaFormProps> = ({
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
 
-    if (value === "" || value === "+" || value === "-") {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-      return;
-    }
+    const partialNumberRegex = /^[-+]?(?:\d+\.?\d*|\.\d*)?$/;
 
-    const numberRegex = /^[-+]?(\d+\.?\d*|\.\d+)$/;
-
-    if (!numberRegex.test(value)) {
+    if (!partialNumberRegex.test(value)) {
       return toast.error("El valor ingresado no es un número válido.");
     }
 
     setFormData({
       ...formData,
-      [name]: parseFloat(value),
+      [name]: value,
     });
   };
 
