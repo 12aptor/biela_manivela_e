@@ -250,4 +250,8 @@ export class BielaManivela {
       };
     }
   }
+
+  calculateAcceleration() {
+    
+  }
 }

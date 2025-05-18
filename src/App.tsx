@@ -1,5 +1,5 @@
 import { useState } from "react";
-import BielaManivelaForm from "./components/BielaManivelaForm";
+import BielaManivelaForm from "./components/biela-manivel-form/BielaManivelaForm";
 import BielaManivelaAnimation from "./components/biela-manivela-animation/BiealManivelaAnimation";
 import { BielaManivelaParams } from "./lib/biela_manivela_e";
 import { Toaster } from "sonner";
