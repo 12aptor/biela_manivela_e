@@ -42,23 +42,19 @@ export class BielaManivela {
     return (value * 180) / math.pi;
   }
 
-  stringToNumber(value: string) {
-    return parseFloat(value);
-  }
-
   setParams(params: BielaManivelaParams) {
-    this.Lm = this.stringToNumber(params.Lm);
-    this.Lb = this.stringToNumber(params.Lb);
-    this.e = this.stringToNumber(params.e);
+    this.Lm = parseFloat(params.Lm);
+    this.Lb = parseFloat(params.Lb);
+    this.e = parseFloat(params.e);
     this.theta_m_rad = this.degToRadians(params.theta_m_deg);
     this.theta_b_rad = this.degToRadians(params.theta_b_deg);
-    this.s = this.stringToNumber(params.s);
-    this.vel_m = this.stringToNumber(params.vel_m);
-    this.vel_b = this.stringToNumber(params.vel_b);
-    this.vel_s = this.stringToNumber(params.vel_s);
-    this.acc_m = this.stringToNumber(params.acc_m);
-    this.acc_b = this.stringToNumber(params.acc_b);
-    this.acc_s = this.stringToNumber(params.acc_s);
+    this.s = parseFloat(params.s);
+    this.vel_m = parseFloat(params.vel_m);
+    this.vel_b = parseFloat(params.vel_b);
+    this.vel_s = parseFloat(params.vel_s);
+    this.acc_m = parseFloat(params.acc_m);
+    this.acc_b = parseFloat(params.acc_b);
+    this.acc_s = parseFloat(params.acc_s);
   }
 
   isNumber(value: string) {
@@ -79,18 +75,23 @@ export class BielaManivela {
   }
 
   validateParams(params: BielaManivelaParams) {
-    console.log(params);
     try {
       this.Lm = this.validateParam(params.Lm, "Longitud de manivela (Lm)");
       this.Lb = this.validateParam(params.Lb, "Longitud de biela (Lb)");
       this.e = this.validateParam(params.e, "Excentricidad (e)");
+
+      if (this.Lm + math.abs(this.e) > this.Lb) {
+        throw new Error(
+          "La suma de la longitud de la manivela (Lm) y la excentricidad (e) no puede ser mayor a la longitud de la biela (Lb)"
+        );
+      }
 
       const inputParams = [
         params.theta_m_deg !== "",
         params.theta_b_deg !== "",
         params.s !== "",
       ].filter(Boolean).length;
-      
+
       if (inputParams === 0) {
         throw new Error(
           "Se debe proporcionar al menos uno de los siguientes: ángulo de manivela, ángulo de biela o posición"
@@ -102,49 +103,59 @@ export class BielaManivela {
         );
       }
 
-      if (
-        this.theta_m_rad !== undefined &&
-        (this.theta_m_rad < -360 || this.theta_m_rad > 360)
-      ) {
-        throw new Error(
-          "El ángulo de la manivela debe estar entre -360° y 360°"
-        );
+      if (params.theta_m_deg !== "") {
+        if (
+          parseFloat(params.theta_m_deg) < 0 ||
+          parseFloat(params.theta_m_deg) > 360
+        ) {
+          throw new Error(
+            "El ángulo de la manivela debe estar entre 0° y 360°"
+          );
+        }
+        this.theta_m_rad = this.degToRadians(params.theta_m_deg);
       }
 
-      if (
-        this.theta_b_rad !== undefined &&
-        (this.theta_b_rad < -360 || this.theta_b_rad > 360)
-      ) {
-        throw new Error("El ángulo de la biela debe estar entre -360° y 360°");
+      if (params.theta_b_deg !== "") {
+        if (
+          parseFloat(params.theta_b_deg) < 0 ||
+          parseFloat(params.theta_b_deg) > 360
+        ) {
+          throw new Error("El ángulo de la biela debe estar entre 0° y 360°");
+        }
+        this.theta_b_rad = this.degToRadians(params.theta_b_deg);
       }
 
-      // Validar que la relación Lb/Lm sea razonable (regla empírica)
-      if (this.Lb / this.Lm < 2) {
-        throw new TypeError(
-          "La relación longitud biela/manivela (Lb/Lm) es menor a 2, lo que puede causar problemas mecánicos"
+      if (params.s !== "") {
+        const result = math.sqrt(
+          math.subtract(
+            math.pow(parseFloat(params.Lm) + parseFloat(params.Lb), 2),
+            math.pow(parseFloat(params.e), 2)
+          ) as number
         );
+        if (math.isComplex(result)) {
+          throw new Error(
+            "El resultado es un número complejo, no se puede comparar."
+          );
+        }
+
+        if (parseFloat(params.s) < 0 || parseFloat(params.s) > result) {
+          throw new Error(
+            "La posición (s) no puede ser mayor que " + result.toFixed(2)
+          );
+        }
+        this.s = parseFloat(params.s);
       }
       return true;
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
-      } else if (error instanceof TypeError) {
-        toast.warning(error.message);
+        return false;
       }
-      return false;
     }
   }
 
-  calculatePosition() {
-    this.s =
-      this.Lm * math.cos(this.theta_m_rad) +
-      this.Lb * math.sin(this.theta_b_rad);
-    return this.s;
-  }
-
   equationOfMotion() {
-    console.log(this.theta_m_rad);
-    if (this.theta_m_rad === 0) {
+    if (this.theta_m_rad !== 0) {
       const dividend = math.add(
         math.multiply(this.Lm, math.sin(this.theta_m_rad)),
         this.e
@@ -153,7 +164,9 @@ export class BielaManivela {
       const asin_argument = dividend / divisor;
 
       this.theta_b_rad = math.asin(asin_argument) as number;
-      this.calculatePosition();
+      this.s =
+        this.Lm * math.cos(this.theta_m_rad) +
+        this.Lb * math.cos(this.theta_b_rad);
 
       return {
         theta_m_deg: this.radiansToDegrees(this.theta_m_rad),
@@ -162,7 +175,7 @@ export class BielaManivela {
       };
     }
 
-    if (this.theta_b_rad) {
+    if (this.theta_b_rad !== 0) {
       const dividend = math.subtract(
         math.multiply(this.Lb, math.sin(this.theta_b_rad)),
         this.e
@@ -170,7 +183,9 @@ export class BielaManivela {
       const divisor = this.Lm;
 
       this.theta_m_rad = math.asin(dividend / divisor) as number;
-      this.calculatePosition();
+      this.s =
+        this.Lm * math.cos(this.theta_m_rad) +
+        this.Lb * math.cos(this.theta_b_rad);
 
       return {
         theta_m_deg: this.radiansToDegrees(this.theta_m_rad),
@@ -179,31 +194,36 @@ export class BielaManivela {
       };
     }
 
-    if (this.s) {
-      const acos_dividend = math.add(
-        math.add(math.pow(this.s, 2), math.pow(this.e, 2)),
-        math.subtract(math.pow(this.Lb, 2), math.pow(this.Lm, 2))
-      );
-      const acos_divisor = math.multiply(2, this.Lb);
-      const acos_argument = math.divide(acos_dividend, acos_divisor) as number;
-      this.theta_b_rad = math.add(
+    if (this.s !== 0) {
+      this.theta_b_rad = math.sum(
         math.atan(math.divide(this.e, this.s)),
-        math.acos(acos_argument)
-      ) as number;
-
-      const asin_dividend = math.subtract(
-        math.multiply(this.Lb, math.sin(this.theta_b_rad)),
-        this.e
+        math.acos(
+          math.divide(
+            math.subtract(
+              math.sum(
+                math.pow(this.s, 2) as number,
+                math.pow(this.e, 2) as number,
+                math.pow(this.Lb, 2) as number
+              ),
+              math.pow(this.Lm, 2)
+            ),
+            math.multiply(2, this.Lb)
+          ) as number
+        ) as number
       );
-      const asin_divisor = this.Lm;
+      console.log(this.radiansToDegrees(this.theta_b_rad));
 
-      this.theta_m_rad = math.asin(asin_dividend / asin_divisor) as number;
-
-      console.log({
-        asin_dividend: asin_dividend,
-        asin_divisor: asin_divisor,
-        theta_m_rad: this.theta_m_rad,
-      });
+      this.theta_m_rad = math.acos(
+        math.divide(
+          math.subtract(
+            this.s,
+            math.multiply(this.Lb, math.cos(this.theta_b_rad))
+          ),
+          this.Lm
+        )
+      ) as number;
+      console.log(this.theta_m_rad);
+      console.log(this.radiansToDegrees(this.theta_m_rad));
 
       return {
         theta_m_deg: (this.theta_m_rad * 180) / math.pi,
@@ -251,7 +271,5 @@ export class BielaManivela {
     }
   }
 
-  calculateAcceleration() {
-    
-  }
+  calculateAcceleration() {}
 }

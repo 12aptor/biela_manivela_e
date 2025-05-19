@@ -1,7 +1,7 @@
 import React, { ChangeEvent } from "react";
-import { BielaManivela, BielaManivelaParams } from "../lib/biela_manivela_e";
 import "./BielaManivelaForm.css";
 import { toast } from "sonner";
+import { BielaManivela, BielaManivelaParams } from "../../lib/biela_manivela_e";
 
 interface BielaManivelaFormProps {
   setFormData: (formData: BielaManivelaParams) => void;
