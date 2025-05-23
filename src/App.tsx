@@ -22,16 +22,18 @@ function App() {
   });
 
   return (
-    <div className="app">
-      <div className="form-container">
-        <BielaManivelaForm
-          setFormData={setFormData}
-          formData={formData}
-        />
-      </div>
+    <div className="app-container">
+      <div className="app">
+        <div className="form-section">
+          <BielaManivelaForm
+            setFormData={setFormData}
+            formData={formData}
+          />
+        </div>
 
-      <div className="animation-container">
-        <BielaManivelaAnimation formData={formData} />
+        <div className="animation-section">
+          <BielaManivelaAnimation formData={formData} />
+        </div>
       </div>
 
       <Toaster position="top-center" />

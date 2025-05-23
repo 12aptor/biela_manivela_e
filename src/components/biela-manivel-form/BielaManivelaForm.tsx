@@ -84,42 +84,39 @@ const BielaManivelaForm: React.FC<BielaManivelaFormProps> = ({
   return (
     <div className="container">
       <h1>Biela-Manivela</h1>
-
-      <div className="form-group">
-        <div className="row">
-          <div className="input-group">
-            <label htmlFor="Lm">Longitud de Manivela (Lm)</label>
-            <input
-              type="text"
-              id="Lm"
-              name="Lm"
-              value={formData.Lm}
-              onChange={handleInputChange}
-              step="any"
-            />
-          </div>
-          <div className="input-group">
-            <label htmlFor="Lb">Longitud de Biela (Lb)</label>
-            <input
-              type="text"
-              id="Lb"
-              name="Lb"
-              value={formData.Lb}
-              onChange={handleInputChange}
-              step="any"
-            />
-          </div>
-          <div className="input-group">
-            <label htmlFor="e">Excentricidad (e)</label>
-            <input
-              type="text"
-              id="e"
-              name="e"
-              value={formData.e}
-              onChange={handleInputChange}
-              step="any"
-            />
-          </div>
+      <div className="row">
+        <div className="input-group">
+          <label htmlFor="Lm">Longitud de Manivela (Lm)</label>
+          <input
+            type="text"
+            id="Lm"
+            name="Lm"
+            value={formData.Lm}
+            onChange={handleInputChange}
+            step="any"
+          />
+        </div>
+        <div className="input-group">
+          <label htmlFor="Lb">Longitud de Biela (Lb)</label>
+          <input
+            type="text"
+            id="Lb"
+            name="Lb"
+            value={formData.Lb}
+            onChange={handleInputChange}
+            step="any"
+          />
+        </div>
+        <div className="input-group">
+          <label htmlFor="e">Excentricidad (e)</label>
+          <input
+            type="text"
+            id="e"
+            name="e"
+            value={formData.e}
+            onChange={handleInputChange}
+            step="any"
+          />
         </div>
       </div>
 
