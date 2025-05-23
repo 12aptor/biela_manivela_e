@@ -49,31 +49,29 @@ const BielaManivelaForm: React.FC<BielaManivelaFormProps> = ({
       return;
     }
 
+    const updatedData = { ...formData };
+
     const position = bielaManivela.equationOfMotion();
     if (position) {
-      setFormData({
-        ...formData,
-        theta_m_deg: position.theta_m_deg.toFixed(2),
-        theta_b_deg: position.theta_b_deg.toFixed(2),
-        s: position.s.toFixed(2),
-      });
+      updatedData.theta_m_deg = position.theta_m_deg.toFixed(2);
+      updatedData.theta_b_deg = position.theta_b_deg.toFixed(2);
+      updatedData.s = position.s.toFixed(2);
     }
     const velocity = bielaManivela.calculateVelocity();
     if (velocity) {
-      setFormData({
-        ...formData,
-        vel_m: velocity.theta_m_dot.toFixed(2),
-        vel_b: velocity.theta_b_dot.toFixed(2),
-        vel_s: velocity.s_dot.toFixed(2),
-      });
+      updatedData.vel_m = velocity.vel_m.toFixed(2);
+      updatedData.vel_b = velocity.vel_b.toFixed(2);
+      updatedData.vel_s = velocity.vel_s.toFixed(2);
     }
 
-    setFormData({
-      ...formData,
-      theta_m_deg: position?.theta_m_deg.toFixed(2) || formData.theta_m_deg,
-      theta_b_deg: position?.theta_b_deg.toFixed(2) || formData.theta_b_deg,
-      s: position?.s.toFixed(2) || formData.s,
-    });
+    const acceleration = bielaManivela.calculateAcceleration();
+    if (acceleration) {
+      updatedData.acc_m = acceleration.acc_m.toFixed(2);
+      updatedData.acc_b = acceleration.acc_b.toFixed(2);
+      updatedData.acc_s = acceleration.acc_s.toFixed(2);
+    }
+
+    setFormData(updatedData);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -231,9 +229,11 @@ const BielaManivelaForm: React.FC<BielaManivelaFormProps> = ({
         </div>
       </div>
 
-      <button className="submit-btn" onClick={handleSubmit}>
-        Calcular
-      </button>
+      <div className="button-container">
+        <button className="submit-btn" onClick={handleSubmit}>
+          Calcular
+        </button>
+      </div>
     </div>
   );
 };

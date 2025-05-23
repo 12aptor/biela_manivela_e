@@ -145,6 +145,30 @@ export class BielaManivela {
         }
         this.s = parseFloat(params.s);
       }
+
+      if (params.vel_m !== "") {
+        this.vel_m = this.validateParam(params.vel_m, "Velocidad Manivela");
+      }
+
+      if (params.vel_b !== "") {
+        this.vel_b = this.validateParam(params.vel_b, "Velocidad Biela");
+      }
+
+      if (params.vel_s !== "") {
+        this.vel_s = this.validateParam(params.vel_s, "Velocidad Posición");
+      }
+
+      if (params.acc_m !== "") {
+        this.acc_m = this.validateParam(params.acc_m, "Aceleración Manivela");
+      }
+
+      if (params.acc_b !== "") {
+        this.acc_b = this.validateParam(params.acc_b, "Aceleración Biela");
+      }
+
+      if (params.acc_s !== "") {
+        this.acc_s = this.validateParam(params.acc_s, "Aceleración Posición");
+      }
       return true;
     } catch (error) {
       if (error instanceof Error) {
@@ -211,7 +235,6 @@ export class BielaManivela {
           ) as number
         ) as number
       );
-      console.log(this.radiansToDegrees(this.theta_b_rad));
 
       this.theta_m_rad = math.acos(
         math.divide(
@@ -222,8 +245,6 @@ export class BielaManivela {
           this.Lm
         )
       ) as number;
-      console.log(this.theta_m_rad);
-      console.log(this.radiansToDegrees(this.theta_m_rad));
 
       return {
         theta_m_deg: (this.theta_m_rad * 180) / math.pi,
@@ -234,7 +255,7 @@ export class BielaManivela {
   }
 
   calculateVelocity() {
-    if (this.vel_m) {
+    if (this.vel_m !== 0) {
       const A = [
         [
           this.Lm * math.sin(this.theta_m_rad),
@@ -258,18 +279,214 @@ export class BielaManivela {
       this.vel_s = s_dot;
 
       return {
-        theta_m_dot: this.vel_m,
-        theta_b_dot,
-        s_dot,
+        vel_m: this.vel_m,
+        vel_b: this.vel_b,
+        vel_s: this.vel_s,
       };
-    } else if (this.vel_b) {
+    } else if (this.vel_b !== 0) {
+      const A = [
+        [
+          this.Lm * math.sin(this.theta_m_rad),
+          this.Lb * math.sin(this.theta_b_rad),
+          1,
+        ],
+        [
+          this.Lm * math.cos(this.theta_m_rad),
+          -this.Lb * math.cos(this.theta_b_rad),
+          0,
+        ],
+        [0, 1, 0],
+      ];
+      const b = [0, 0, this.vel_b];
+      const x = math.lusolve(A, b) as number[][];
+      const [theta_m_dot, s_dot] = [x[1][0], x[2][0]];
+      this.vel_m = theta_m_dot;
+      this.vel_s = s_dot;
+
       return {
-        theta_m_dot: this.vel_m,
-        theta_b_dot: this.vel_b,
-        s_dot: this.vel_s,
+        vel_m: this.vel_m,
+        vel_b: this.vel_b,
+        vel_s: this.vel_s,
+      };
+    } else if (this.vel_s !== 0) {
+      const A = [
+        [
+          this.Lm * math.sin(this.theta_m_rad),
+          this.Lb * math.sin(this.theta_b_rad),
+          1,
+        ],
+        [
+          this.Lm * math.cos(this.theta_m_rad),
+          -this.Lb * math.cos(this.theta_b_rad),
+          0,
+        ],
+        [0, 0, 1],
+      ];
+
+      const b = [0, 0, this.s];
+
+      const x = math.lusolve(A, b) as number[][];
+
+      const [theta_m_dot, theta_b_dot] = [x[1][0], x[2][0]];
+      this.vel_m = theta_m_dot;
+      this.vel_b = theta_b_dot;
+
+      return {
+        vel_m: this.vel_m,
+        vel_b: this.vel_b,
+        vel_s: this.vel_s,
       };
     }
   }
 
-  calculateAcceleration() {}
+  calculateAcceleration() {
+    if (this.acc_m !== 0) {
+      const A = math.matrix([
+        [
+          math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+          math.multiply(this.Lb, math.sin(this.theta_b_rad)),
+          1,
+        ],
+        [
+          math.multiply(this.Lm, math.cos(this.theta_m_rad)),
+          math.multiply(-this.Lb, math.cos(this.theta_b_rad)),
+          0,
+        ],
+        [1, 0, 0],
+      ]);
+
+      const b = math.matrix([
+        math.add(
+          math.multiply(
+            math.multiply(-this.Lm, math.cos(this.theta_m_rad)),
+            math.square(this.vel_m)
+          ),
+          math.multiply(
+            math.multiply(-this.Lb, math.cos(this.theta_b_rad)),
+            math.square(this.vel_b)
+          )
+        ),
+        math.add(
+          math.multiply(
+            math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+            math.square(this.vel_m)
+          ),
+          math.multiply(
+            math.multiply(-this.Lb, math.sin(this.theta_b_rad)),
+            math.square(this.vel_b)
+          )
+        ),
+        this.acc_m,
+      ]);
+
+      const x = math.lusolve(A, b);
+      const solution = x.valueOf() as number[][];
+      this.acc_b = solution[1][0];
+      this.acc_s = solution[2][0];
+
+      return {
+        acc_m: this.acc_m,
+        acc_b: this.acc_b,
+        acc_s: this.acc_s,
+      };
+    } else if (this.acc_b !== 0) {
+      const A = math.matrix([
+        [
+          math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+          math.multiply(this.Lb, math.sin(this.theta_b_rad)),
+          1,
+        ],
+        [
+          math.multiply(this.Lm, math.cos(this.theta_m_rad)),
+          math.multiply(-this.Lb, math.cos(this.theta_b_rad)),
+          0,
+        ],
+        [0, 1, 0],
+      ]);
+
+      const b = math.matrix([
+        math.add(
+          math.multiply(
+            math.multiply(-this.Lm, math.cos(this.theta_m_rad)),
+            math.square(this.vel_m)
+          ),
+          math.multiply(
+            math.multiply(-this.Lb, math.cos(this.theta_b_rad)),
+            math.square(this.vel_b)
+          )
+        ),
+        math.add(
+          math.multiply(
+            math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+            math.square(this.vel_m)
+          ),
+          math.multiply(
+            math.multiply(-this.Lb, math.sin(this.theta_b_rad)),
+            math.square(this.vel_b)
+          )
+        ),
+        this.acc_b,
+      ]);
+
+      const x = math.lusolve(A, b);
+      const solution = x.valueOf() as number[][];
+      this.acc_m = solution[1][0];
+      this.acc_s = solution[2][0];
+
+      return {
+        acc_m: this.acc_m,
+        acc_b: this.acc_b,
+        acc_s: this.acc_s,
+      };
+    } else if (this.acc_s !== 0) {
+      const A = math.matrix([
+        [
+          math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+          math.multiply(this.Lb, math.sin(this.theta_b_rad)),
+          1,
+        ],
+        [
+          math.multiply(this.Lm, math.cos(this.theta_m_rad)),
+          math.multiply(-this.Lb, math.cos(this.theta_b_rad)),
+          0,
+        ],
+        [0, 0, 1],
+      ]);
+
+      const b = math.matrix([
+        math.add(
+          math.multiply(
+            math.multiply(-this.Lm, math.cos(this.theta_m_rad)),
+            math.square(this.vel_m)
+          ),
+          math.multiply(
+            math.multiply(-this.Lb, math.cos(this.theta_b_rad)),
+            math.square(this.vel_b)
+          )
+        ),
+        math.add(
+          math.multiply(
+            math.multiply(this.Lm, math.sin(this.theta_m_rad)),
+            math.square(this.vel_m)
+          ),
+          math.multiply(
+            math.multiply(-this.Lb, math.sin(this.theta_b_rad)),
+            math.square(this.vel_b)
+          )
+        ),
+        this.acc_s,
+      ]);
+
+      const x = math.lusolve(A, b);
+      const solution = x.valueOf() as number[][];
+      this.acc_m = solution[1][0];
+      this.acc_b = solution[2][0];
+
+      return {
+        acc_m: this.acc_m,
+        acc_b: this.acc_b,
+        acc_s: this.acc_s,
+      };
+    }
+  }
 }

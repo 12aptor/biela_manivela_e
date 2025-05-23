@@ -1,6 +1,5 @@
 .container {
   background: var(--card-bg);
-  padding: 1rem;
   border-radius: 0.5rem;
   box-shadow: var(--shadow-color);
   width: 100%;
@@ -58,6 +57,11 @@ input:focus {
   margin: 1.5rem 0 1rem;
   padding-bottom: 0.375rem;
   border-bottom: 2px solid var(--border-secondary);
+}
+
+.button-container {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .submit-btn {
